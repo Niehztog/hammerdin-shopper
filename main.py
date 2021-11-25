@@ -23,11 +23,21 @@ def move_and_click(x, y):
 
 
 def take_screenshot(filename, region=None):
-    filename = filename + '_' + str(uuid.uuid4()) + '.png'
-    if region is None:
-        return pyautogui.screenshot(filename)
+    if isinstance(filename, str):
+        filename = generate_random_filename(filename)
+        if region is None:
+            return pyautogui.screenshot(filename)
+        else:
+            return pyautogui.screenshot(filename, region=region)
     else:
-        return pyautogui.screenshot(filename, region=region)
+        if region is None:
+            return pyautogui.screenshot()
+        else:
+            return pyautogui.screenshot(region=region)
+
+
+def generate_random_filename(filename):
+    return filename + '_' + str(uuid.uuid4()) + '.png'
 
 
 def start_to_drognan():
@@ -61,19 +71,31 @@ def search_items():
                 #    take_screenshot('unusual_shop_layout')
                 pyautogui.moveTo(item_location.left + (item_location.width / 2),
                                  item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
-                item_description = detect_text(character_class, item_type)
+                img = take_screenshot(False, (0, 0, 1050, 977))
+                item_description = detect_text(img)
+                if 'SKILL LEVELS' not in item_description:
+                    continue  # false positive
+
+                img.save(generate_random_filename(item_type))
                 log_text(character_class, item_description)
                 if (character_class == 'paladin'
                     and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
-                    and ('concentration' in item_description.lower() or 'shield' in item_description.lower() or 'blessed' in item_description.lower())) \
+                    and ('concentration' in item_description.lower() or 'shield' in item_description.lower()
+                         or 'blessed' in item_description.lower() or 'freeze' in item_description.lower())) \
                     or (character_class == 'paladin'
                         and re.match(r".*\+2 T.{1} PALADIN SKILL LEVELS", item_description,
                                      re.DOTALL | re.IGNORECASE)
                         and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)
                         and re.match(r".*\+3 T.{1} Concentration", item_description, re.DOTALL | re.IGNORECASE)) \
+                    or(character_class == 'paladin'
+                        and item_type == 'rune_scepter'
+                        and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description) \
                     or (character_class == 'necromancer'
                         and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE", item_description, re.DOTALL)
-                        and ('resist (' in item_description.lower() or 'e explosion' in item_description.lower())):
+                        and re.match(r".*\+3 T.{1} Corpse EXPLOSION", item_description, re.DOTALL | re.IGNORECASE)) \
+                    or (character_class == 'necromancer'
+                        and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE", item_description, re.DOTALL)
+                        and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
                     stop_shopping = False
                     if buy_counter < MAX_BUY:
                         buy_item()
@@ -114,10 +136,8 @@ def out_to_drognan():
     move_and_click(1150, 335)  # open merchant window
 
 
-def detect_text(character_class, item_type):
-    img = take_screenshot(item_type, (0, 0, 1050, 977))
+def detect_text(img):
     text = pytesseract.image_to_string(img, 'eng')
-
     m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
     if m:
         text = m.group(1).strip()
@@ -177,5 +197,5 @@ if __name__ == '__main__':
     print(pyautogui.position())  # current mouse x and y
     #  exit()
 
-    #  start_at_startpoint()
-    start_at_drognan()
+    start_at_startpoint()
+    #start_at_drognan()
