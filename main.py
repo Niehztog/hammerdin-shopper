@@ -15,6 +15,7 @@ MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
 MAX_BUY = 7
 shopping_session_counter = 0
+item_counter = dict()
 
 
 def move_and_click(x, y):
@@ -47,11 +48,9 @@ def start_to_drognan():
 
 def shop_open_weapons_tab():
     for btn_weapons_tab_filename in (
-    'btn_weapons_tab.png', 'btn_weapons_tab2.png', 'btn_weapons_tab3.png', 'btn_weapons_tab4.png'):
+            'btn_weapons_tab.png', 'btn_weapons_tab2.png', 'btn_weapons_tab3.png', 'btn_weapons_tab4.png'):
         btn_weapons_tab = pyautogui.locateOnScreen(btn_weapons_tab_filename, region=(314, 77, 190, 90))
-        if btn_weapons_tab is None:
-            print('weapons button ' + btn_weapons_tab_filename + ' not found')
-        else:
+        if btn_weapons_tab is not None:
             move_and_click(btn_weapons_tab.left + (btn_weapons_tab.width / 2),
                            btn_weapons_tab.top + (btn_weapons_tab.height / 2))
             return
@@ -60,9 +59,12 @@ def shop_open_weapons_tab():
 
 
 def search_items():
+    global item_counter
     stop_shopping = False
-    for character_class, item_names in {'paladin': ['grand_scepter', 'rune_scepter'],
-                                        'necromancer': ['wand', 'bone_wand', 'yew_wand']}.items():
+    item_counter = dict()
+    search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand']}
+    #  search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
+    for character_class, item_names in search_list.items():
         for item_type in item_names:
             pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor outside of merchant window
             for item_location in pyautogui.locateAllOnScreen(item_type + '.png', region=(183, 129, 411, 588)):
@@ -76,26 +78,29 @@ def search_items():
                 if 'SKILL LEVELS' not in item_description:
                     continue  # false positive
 
+                item_counter[item_type] = item_counter.get(item_type, 0) + 1
                 img.save(generate_random_filename(item_type))
                 log_text(character_class, item_description)
                 if (character_class == 'paladin'
                     and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
                     and ('concentration' in item_description.lower() or 'shield' in item_description.lower()
                          or 'blessed' in item_description.lower() or 'freeze' in item_description.lower())) \
-                    or (character_class == 'paladin'
-                        and re.match(r".*\+2 T.{1} PALADIN SKILL LEVELS", item_description,
-                                     re.DOTALL | re.IGNORECASE)
-                        and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)
-                        and re.match(r".*\+3 T.{1} Concentration", item_description, re.DOTALL | re.IGNORECASE)) \
-                    or(character_class == 'paladin'
-                        and item_type == 'rune_scepter'
-                        and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description) \
-                    or (character_class == 'necromancer'
-                        and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE", item_description, re.DOTALL)
-                        and re.match(r".*\+3 T.{1} Corpse EXPLOSION", item_description, re.DOTALL | re.IGNORECASE)) \
-                    or (character_class == 'necromancer'
-                        and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE", item_description, re.DOTALL)
-                        and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
+                        or (character_class == 'paladin'
+                            and re.match(r".*\+2 T.{1} PALADIN SKILL LEVELS", item_description,
+                                         re.DOTALL | re.IGNORECASE)
+                            and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)
+                            and re.match(r".*\+3 T.{1} Concentration", item_description, re.DOTALL | re.IGNORECASE)) \
+                        or (character_class == 'paladin'
+                            and item_type == 'rune_scepter'
+                            and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description) \
+                        or (character_class == 'necromancer'
+                            and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
+                                                                                item_description, re.DOTALL)
+                            and re.match(r".*\+3 T.{1} Corpse EXPLOSION", item_description, re.DOTALL | re.IGNORECASE)) \
+                        or (character_class == 'necromancer'
+                            and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
+                                                                                item_description, re.DOTALL)
+                            and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
                     stop_shopping = False
                     if buy_counter < MAX_BUY:
                         buy_item()
@@ -150,25 +155,31 @@ def log_text(character_class, text):
     file_object.close()  # Close the file
 
 
-def log_shopping_session():
+def log_shopping_session(elapsed_time):
     global shopping_session_counter
     shopping_session_counter += 1
-    print('shopping session #' + str(shopping_session_counter))
+    print('shopping session #' + str(shopping_session_counter)
+          + ', time elapsed ' + str(round(elapsed_time, 2)) + ' s'
+          + ', results: ' + str(item_counter))
 
 
 def start_at_startpoint():
     first_walk = True
 
+    time_start = time.time()
     start_to_drognan()
 
     while True:
-        log_shopping_session()
         shop_open_weapons_tab()
         if search_items() is True:
-            print("item found, stopping")
+            print("item buy counter reached limit, stopping")
             break
 
         exit_shop_window()
+
+        time_stop = time.time()
+        log_shopping_session(time_stop - time_start)
+        time_start = time.time()
 
         drognan_to_out(first_walk)
         first_walk = False
@@ -179,13 +190,15 @@ def start_at_drognan():
     while True:
         exit_shop_window()
 
+        time_start = time.time()
         drognan_to_out(False)
         out_to_drognan()
-        log_shopping_session()
         shop_open_weapons_tab()
         if search_items() is True:
-            print("item found, stopping")
+            print("item buy counter reached limit, stopping")
             break
+        time_stop = time.time()
+        log_shopping_session(time_stop - time_start)
 
 
 if __name__ == '__main__':
@@ -198,4 +211,4 @@ if __name__ == '__main__':
     #  exit()
 
     start_at_startpoint()
-    #start_at_drognan()
+    # start_at_drognan()
