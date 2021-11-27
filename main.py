@@ -13,9 +13,11 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
-MAX_BUY = 7
+MAX_BUY = 5
+MAX_SESSIONS = 230
 shopping_session_counter = 0
 item_counter = dict()
+item_counter_total = dict()
 
 
 def move_and_click(x, y):
@@ -59,8 +61,7 @@ def shop_open_weapons_tab():
 
 
 def search_items():
-    global item_counter
-    stop_shopping = False
+    global item_counter, item_counter_total
     item_counter = dict()
     search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand']}
     #  search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
@@ -79,6 +80,7 @@ def search_items():
                     continue  # false positive
 
                 item_counter[item_type] = item_counter.get(item_type, 0) + 1
+                item_counter_total[item_type] = item_counter_total.get(item_type, 0) + 1
                 img.save(generate_random_filename(item_type))
                 log_text(character_class, item_description)
                 if (character_class == 'paladin'
@@ -101,12 +103,9 @@ def search_items():
                             and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
                                                                                 item_description, re.DOTALL)
                             and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
-                    stop_shopping = False
                     if buy_counter < MAX_BUY:
                         buy_item()
-                    else:
-                        stop_shopping = True
-    return stop_shopping
+    return
 
 
 def buy_item():
@@ -163,40 +162,40 @@ def log_shopping_session(elapsed_time):
           + ', results: ' + str(item_counter))
 
 
-def start_at_startpoint():
-    first_walk = True
+def draw_end_statistics(exit_reason, elapsed_time):
+    print(exit_reason + ', stopping'
+        + ', total duration: ' + str(round(elapsed_time, 2)) + ' s'
+        + ', results: ' + str(item_counter_total))
 
-    time_start = time.time()
-    start_to_drognan()
 
-    while True:
+def main_shopping_loop(first_walk=False):
+
+    time_total_start = time.time()
+
+    if first_walk is True:
+        time_start = time.time()
+        start_to_drognan()
         shop_open_weapons_tab()
-        if search_items() is True:
-            print("item buy counter reached limit, stopping")
-            break
-
-        exit_shop_window()
-
+        search_items()
         time_stop = time.time()
         log_shopping_session(time_stop - time_start)
-        time_start = time.time()
 
+    while True:
+        exit_shop_window()
+
+        time_start = time.time()
         drognan_to_out(first_walk)
         first_walk = False
         out_to_drognan()
-
-
-def start_at_drognan():
-    while True:
-        exit_shop_window()
-
-        time_start = time.time()
-        drognan_to_out(False)
-        out_to_drognan()
         shop_open_weapons_tab()
-        if search_items() is True:
-            print("item buy counter reached limit, stopping")
+        search_items()
+        if buy_counter >= MAX_BUY:
+            draw_end_statistics('item buy counter reached limit', time.time() - time_total_start)
             break
+        if shopping_session_counter >= MAX_SESSIONS:
+            draw_end_statistics('shopping session counter reached limit', time.time() - time_total_start)
+            break
+
         time_stop = time.time()
         log_shopping_session(time_stop - time_start)
 
@@ -210,5 +209,4 @@ if __name__ == '__main__':
     print(pyautogui.position())  # current mouse x and y
     #  exit()
 
-    start_at_startpoint()
-    # start_at_drognan()
+    main_shopping_loop(True)
