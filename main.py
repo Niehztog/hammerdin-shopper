@@ -53,7 +53,7 @@ def start_to_drognan():
 
 
 def shop_open_weapons_tab():
-    for btn_weapons_tab_filename in [r'large font mode/btn_weapons_tab.png', r'large font mode/btn_weapons_tab2.png']:
+    for btn_weapons_tab_filename in [r'assets/btn_weapons_tab.png', r'assets/btn_weapons_tab2.png']:
         try:
             btn_weapons_tab = pyautogui.locateOnScreen(btn_weapons_tab_filename, region=(189, 95, 575, 41))
         except pyautogui.ImageNotFoundException:
@@ -80,7 +80,7 @@ def search_items():
             pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY) # move cursor on the red x (close button)
             try:
                 locations = list(
-                    pyautogui.locateAllOnScreen(r'large font mode/' + item_type + '.png', region=(190, 137, 574, 572)))
+                    pyautogui.locateAllOnScreen(r'assets/' + item_type + '.png', region=(190, 137, 574, 572)))
                 for location in locations:
                     items_found.append((character_class, item_type, location))
             except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
@@ -112,6 +112,9 @@ def search_items():
         if (character_class == 'paladin'
             and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
             and 'concentration' in item_description.lower() and 'blessed' in item_description.lower()) \
+                or (character_class == 'paladin'
+                    and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
+                    and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)) \
                 or (character_class == 'paladin'
                     and re.match(r".*\+2 T.{1} PALADIN SKILL LEVELS", item_description, re.DOTALL | re.IGNORECASE)
                     and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)
@@ -175,9 +178,9 @@ def detect_text(img):
 
 
 def log_text(character_class, text):
-    file_object = open('log_' + character_class + '.txt', 'a')  # Open a file with access mode 'a'
-    file_object.write('\n' + '===' + '\n' + text)  # Append 'hello' at the end of file
-    file_object.close()  # Close the file
+    file_object = open('log_' + character_class + '.txt', 'a')
+    file_object.write('\n' + '===' + '\n' + text)
+    file_object.close()
 
 
 def log_shopping_session(elapsed_time):
@@ -190,7 +193,7 @@ def log_shopping_session(elapsed_time):
 
 def draw_end_statistics(exit_reason, elapsed_time):
     print(exit_reason + ', stopping'
-        + ', total duration: ' + time.strftime("%H:%M:%S", time.gmtime(elapsed_time)) + ' s'
+        + ', total duration: ' + time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
         + ', results: ' + str(item_counter_total))
 
 
