@@ -89,7 +89,7 @@ def search_items():
         img = take_screenshot(False, (0, 0, 940, 900))
         item_description = detect_text(img)
 
-        if not re.search(r'\+?\s*2\s*\S*\s*SKILL LEVELS', item_description, re.IGNORECASE):
+        if not re.search(r'2.*SKILL LEVELS', item_description, re.IGNORECASE):
             continue
 
         item_counter[item_type] = item_counter.get(item_type, 0) + 1
