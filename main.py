@@ -3,12 +3,14 @@ import time
 import uuid
 import re
 import pyscreeze
+import pytesseract
+from crop_item import extract_item
 
 try:
     from PIL import Image
 except ImportError:
     import Image
-import pytesseract
+
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -19,6 +21,7 @@ MAX_SESSIONS = 0
 shopping_session_counter = 0
 item_counter = dict()
 item_counter_total = dict()
+time_total_start = time.time()
 
 
 def move_and_click(x, y):
@@ -69,7 +72,7 @@ def search_items():
     search_list = {
         'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
                     'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
-                    'grand_scepter_lightblue', 'grand_scepter_blue', 'rune_scepter']}
+                    'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
 
     items_found = []
     for character_class, item_names in search_list.items():
@@ -87,6 +90,11 @@ def search_items():
         pyautogui.moveTo(item_location.left + (item_location.width / 2),
                          item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
         img = take_screenshot(False, (0, 0, 940, 900))
+
+        box = extract_item(img)
+        if box is not None:
+            img = img.crop(box)
+
         item_description = detect_text(img)
 
         if not re.search(r'2.*SKILL LEVELS', item_description, re.IGNORECASE):
@@ -182,13 +190,13 @@ def log_shopping_session(elapsed_time):
 
 def draw_end_statistics(exit_reason, elapsed_time):
     print(exit_reason + ', stopping'
-        + ', total duration: ' + str(round(elapsed_time, 2)) + ' s'
+        + ', total duration: ' + time.strftime("%H:%M:%S", time.gmtime(elapsed_time)) + ' s'
         + ', results: ' + str(item_counter_total))
 
 
 def main_shopping_loop(first_walk=False):
 
-    time_total_start = time.time()
+    global time_total_start
 
     if first_walk is True:
         time_start = time.time()
@@ -229,4 +237,7 @@ if __name__ == '__main__':
     # pyautogui.displayMousePosition()
     #  exit()
 
-    main_shopping_loop(True)
+    try:
+        main_shopping_loop(True)
+    except pyautogui.FailSafeException:
+        draw_end_statistics('User interrupted', time.time() - time_total_start)
