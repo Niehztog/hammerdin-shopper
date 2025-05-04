@@ -14,8 +14,8 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
-MAX_BUY = 5
-MAX_SESSIONS = 230
+MAX_BUY = 4
+MAX_SESSIONS = 0
 shopping_session_counter = 0
 item_counter = dict()
 item_counter_total = dict()
@@ -50,7 +50,7 @@ def start_to_drognan():
 
 
 def shop_open_weapons_tab():
-    for btn_weapons_tab_filename in [r'large font mode/btn_weapons_tab.png']:
+    for btn_weapons_tab_filename in [r'large font mode/btn_weapons_tab.png', r'large font mode/btn_weapons_tab2.png']:
         try:
             btn_weapons_tab = pyautogui.locateOnScreen(btn_weapons_tab_filename, region=(189, 95, 575, 41))
         except pyautogui.ImageNotFoundException:
@@ -65,55 +65,65 @@ def shop_open_weapons_tab():
 def search_items():
     global item_counter, item_counter_total, buy_counter
     item_counter = dict()
-    search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
+    # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
+    search_list = {
+        'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
+                    'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
+                    'grand_scepter_lightblue', 'grand_scepter_blue', 'rune_scepter']}
+
+    items_found = []
     for character_class, item_names in search_list.items():
         for item_type in item_names:
-            pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor on the red x (close button)
+            pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY) # move cursor on the red x (close button)
             try:
-                for item_location in pyautogui.locateAllOnScreen(r'large font mode/' + item_type + '.png', region=(190, 137, 574, 572)):
-                    # if item_location.left + item_location.width > 594:
-                    #    print('found an item in one of the last four columns')
-                    #    take_screenshot('unusual_shop_layout')
-                    pyautogui.moveTo(item_location.left + (item_location.width / 2),
-                                     item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
-                    img = take_screenshot(False, (0, 0, 1050, 977))
-                    item_description = detect_text(img)
-                    if 'SKILL LEVELS' not in item_description:
-                        continue  # false positive
-
-                    item_counter[item_type] = item_counter.get(item_type, 0) + 1
-                    item_counter_total[item_type] = item_counter_total.get(item_type, 0) + 1
-                    img.save(generate_random_filename(item_type))
-                    log_text(character_class, item_description)
-                    if (character_class == 'paladin'
-                        and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
-                        and ('concentration' in item_description.lower() or 'shield' in item_description.lower()
-                             or 'blessed' in item_description.lower() or 'freeze' in item_description.lower())) \
-                            or (character_class == 'paladin'
-                                and re.match(r".*\+2 T.{1} PALADIN SKILL LEVELS", item_description,
-                                             re.DOTALL | re.IGNORECASE)
-                                and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)
-                                and re.match(r".*\+3 T.{1} Concentration", item_description, re.DOTALL | re.IGNORECASE)) \
-                            or (character_class == 'paladin'
-                                and item_type == 'rune_scepter'
-                                and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description) \
-                            or (character_class == 'necromancer'
-                                and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
-                                                                                    item_description, re.DOTALL)
-                                and re.match(r".*\+3 T.{1} Corpse EXPLOSION", item_description, re.DOTALL | re.IGNORECASE)) \
-                            or (character_class == 'necromancer'
-                                and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
-                                                                                    item_description, re.DOTALL)
-                                and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
-                        if buy_counter < MAX_BUY:
-                            buy_item()
+                locations = list(
+                    pyautogui.locateAllOnScreen(r'large font mode/' + item_type + '.png', region=(190, 137, 574, 572)))
+                for location in locations:
+                    items_found.append((character_class, item_type, location))
             except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
                 continue
+
+    for character_class, item_type, item_location in items_found:
+        pyautogui.moveTo(item_location.left + (item_location.width / 2),
+                         item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
+        img = take_screenshot(False, (0, 0, 940, 900))
+        item_description = detect_text(img)
+
+        if not re.search(r'\+?\s*2\s*\S*\s*SKILL LEVELS', item_description, re.IGNORECASE):
+            continue
+
+        item_counter[item_type] = item_counter.get(item_type, 0) + 1
+        item_counter_total[item_type] = item_counter_total.get(item_type, 0) + 1
+        img.save(generate_random_filename(item_type))
+        log_text(character_class, item_description)
+        # if (character_class == 'paladin'
+        #     and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
+        #     and ('concentration' in item_description.lower() or 'shield' in item_description.lower()
+        #          or 'blessed' in item_description.lower() or 'freeze' in item_description.lower())) \
+
+        if (character_class == 'paladin'
+            and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
+            and 'concentration' in item_description.lower() and 'blessed' in item_description.lower()) \
+                or (character_class == 'paladin'
+                    and re.match(r".*\+2 T.{1} PALADIN SKILL LEVELS", item_description, re.DOTALL | re.IGNORECASE)
+                    and re.match(r".*\+3 T.{1} BLesseD HAmmeR", item_description, re.DOTALL | re.IGNORECASE)
+                    and re.match(r".*\+3 T.{1} Concentration", item_description, re.DOTALL | re.IGNORECASE)) \
+                or (character_class == 'necromancer'
+                    and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
+                                                                        item_description, re.DOTALL)
+                    and re.match(r".*\+3 T.{1} Corpse EXPLOSION", item_description, re.DOTALL | re.IGNORECASE)) \
+                or (character_class == 'necromancer'
+                    and 'SKILL LEVELS' in item_description and re.match(r".*2.{1}% FASTER CAST RATE",
+                                                                        item_description, re.DOTALL)
+                    and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
+            if buy_counter < MAX_BUY:
+                buy_item()
     return
 
 
 def buy_item():
     global buy_counter
+    # raise SystemExit
     print('attempting to buy item')
     pyautogui.click()
     pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor outside of merchant window
@@ -148,7 +158,7 @@ def detect_text(img):
     text = pytesseract.image_to_string(
         img,
         lang='eng',
-        config='-c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
+        config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
     )
     m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
     if m:
@@ -184,6 +194,7 @@ def main_shopping_loop(first_walk=False):
         time_start = time.time()
         start_to_drognan()
         shop_open_weapons_tab()
+        # raise SystemExit
         search_items()
         time_stop = time.time()
         log_shopping_session(time_stop - time_start)
@@ -200,7 +211,7 @@ def main_shopping_loop(first_walk=False):
         if buy_counter >= MAX_BUY:
             draw_end_statistics('item buy counter reached limit', time.time() - time_total_start)
             break
-        if shopping_session_counter >= MAX_SESSIONS:
+        if MAX_SESSIONS > 0 and shopping_session_counter >= MAX_SESSIONS:
             draw_end_statistics('shopping session counter reached limit', time.time() - time_total_start)
             break
 
