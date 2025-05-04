@@ -5,14 +5,22 @@ import re
 import pyscreeze
 import pytesseract
 from crop_item import extract_item
+from enum import Enum, auto
 
-try:
-    from PIL import Image
-except ImportError:
-    import Image
+# try:
+#     from PIL import Image
+# except ImportError:
+#     import Image
 
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+class Diablo2Class(Enum):
+    AMAZON = auto()
+    SORCERESS = auto()
+    NECROMANCER = auto()
+    PALADIN = auto()
+    BARBARIAN = auto()
 
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
@@ -22,14 +30,17 @@ shopping_session_counter = 0
 item_counter = dict()
 item_counter_total = dict()
 time_total_start = time.time()
+char_type = Diablo2Class.SORCERESS
+
+def move_and_click(x, y, right_click: bool = False):
+    pyautogui.moveTo(x, y, duration=MOUSE_MOVE_DELAY)
+    if right_click:
+        pyautogui.click(button='right')
+    else:
+        pyautogui.click()
 
 
-def move_and_click(x, y):
-    pyautogui.moveTo(x, y, duration=MOUSE_MOVE_DELAY)  # walk to and interact with drognan
-    pyautogui.click()
-
-
-def take_screenshot(filename, region=None):
+def take_screenshot(filename: str | None, region=None):
     if isinstance(filename, str):
         filename = generate_random_filename(filename)
         if region is None:
@@ -43,13 +54,20 @@ def take_screenshot(filename, region=None):
             return pyautogui.screenshot(region=region)
 
 
-def generate_random_filename(filename):
+def detect_text(img):
+    text = pytesseract.image_to_string(
+        img,
+        lang='eng',
+        config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
+    )
+    m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
+    if m:
+        text = m.group(1).strip()
+    return text
+
+
+def generate_random_filename(filename: str):
     return filename + '_' + str(uuid.uuid4()) + '.png'
-
-
-def start_to_drognan():
-    move_and_click(1114, 846)  # walk to and interact with drognan
-    move_and_click(1234, 374)  # open merchant window (large font mode)
 
 
 def shop_open_weapons_tab():
@@ -89,7 +107,7 @@ def search_items():
     for character_class, item_type, item_location in items_found:
         pyautogui.moveTo(item_location.left + (item_location.width / 2),
                          item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
-        img = take_screenshot(False, (0, 0, 940, 900))
+        img = take_screenshot(None, (0, 0, 940, 900))
 
         box = extract_item(img)
         if box is not None:
@@ -150,40 +168,45 @@ def exit_shop_window():
         move_and_click(784, 25)  # click red x button
 
 
-def drognan_to_out(first_walk):
-    if first_walk is True:
-        move_and_click(2059, 294)  # walk from drognan outside of town
-        move_and_click(1425, 366)  # walk from drognan outside of town
+def start_to_drognan():
+    move_and_click(1114, 846)  # walk to and interact with Drognan
+    if char_type == Diablo2Class.SORCERESS:
+        move_and_click(1234, 354)  # open merchant window (sorceress)
     else:
-        move_and_click(1931, 241)  # walk from drognan outside of town
-        move_and_click(1480, 354)  # walk from drognan outside of town
+        move_and_click(1234, 374)  # open merchant window (barbarian)
+
+
+def drognan_to_out(first_walk: bool = False):
+    if first_walk is True:
+        move_and_click(2059, 294)  # walk from Drognan outside of town
+        move_and_click(1425, 366)  # walk from Drognan outside of town
+    else:
+        if char_type == Diablo2Class.SORCERESS:
+            move_and_click(1970, 249)  # walk from Drognan outside of town
+            move_and_click(1400, 373)  # walk from Drognan outside of town
+        else:
+            move_and_click(1931, 241)  # walk from Drognan outside of town
+            move_and_click(1480, 354)  # walk from Drognan outside of town
 
 
 def out_to_drognan():
-    move_and_click(820, 809)  # walk from outside of town inside
-    move_and_click(840, 601)  # walk from inside to drognan
-    move_and_click(1150, 335)  # open merchant window
+    if char_type == Diablo2Class.SORCERESS:
+        move_and_click(456, 954, True)  # teleport from outside to Drognan
+        move_and_click(1195, 489)  # interact with Drognan
+        move_and_click(1217, 313)  # open merchant window
+    else:
+        move_and_click(820, 809)  # walk from outside of town inside
+        move_and_click(840, 601)  # walk from inside to Drognan
+        move_and_click(1150, 335)  # open merchant window
 
 
-def detect_text(img):
-    text = pytesseract.image_to_string(
-        img,
-        lang='eng',
-        config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
-    )
-    m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
-    if m:
-        text = m.group(1).strip()
-    return text
-
-
-def log_text(character_class, text):
+def log_text(character_class: str, text: str):
     file_object = open('log_' + character_class + '.txt', 'a')
     file_object.write('\n' + '===' + '\n' + text)
     file_object.close()
 
 
-def log_shopping_session(elapsed_time):
+def log_shopping_session(elapsed_time: float):
     global shopping_session_counter
     shopping_session_counter += 1
     print('shopping session #' + str(shopping_session_counter)
@@ -191,13 +214,13 @@ def log_shopping_session(elapsed_time):
           + ', results: ' + str(item_counter))
 
 
-def draw_end_statistics(exit_reason, elapsed_time):
+def draw_end_statistics(exit_reason: str, elapsed_time: float):
     print(exit_reason + ', stopping'
         + ', total duration: ' + time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
         + ', results: ' + str(item_counter_total))
 
 
-def main_shopping_loop(first_walk=False):
+def main_shopping_loop(first_walk: bool = False):
 
     global time_total_start
 
