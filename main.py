@@ -52,22 +52,6 @@ def take_screenshot(filename: str | None, region: tuple[int, int, int, int] | No
             return pyautogui.screenshot(region=region)
 
 
-def detect_text(img: Image.Image, character_class: str, item_type: str) -> tuple[str, str, str, Image.Image]:
-    box = extract_item(img)
-    if box is not None:
-        img = img.crop(box)
-
-    text = pytesseract.image_to_string(
-        img,
-        lang='eng',
-        config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
-    )
-    m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
-    if m:
-        text = m.group(1).strip()
-    return character_class, item_type, text, img
-
-
 def generate_random_filename(filename: str) -> str:
     return filename + '_' + str(uuid.uuid4()) + '.png'
 
@@ -92,7 +76,7 @@ def search_items():
     items_found = find_item_locations()
     ocr_results = extract_item_description(items_found)
 
-    for character_class, item_type, item_description, img in ocr_results:
+    for character_class, item_type, item_description, img, mouse_x, mouse_y in ocr_results:
         if not re.search(r'2.*SKILL LEVELS', item_description, re.IGNORECASE):
             continue
 
@@ -124,25 +108,42 @@ def search_items():
                                                                         item_description, re.DOTALL)
                     and 'resist (' in item_description.lower() and 'e explosion' in item_description.lower()):
             if buy_counter < MAX_BUY:
-                buy_item()
+                buy_item(mouse_x, mouse_y)
     return
 
 
-def extract_item_description(items_found: list[tuple[str, str, pyscreeze.Box]]) -> list[tuple[str, str, str, Image.Image]]:
+def extract_item_description(items_found: list[tuple[str, str, pyscreeze.Box]]) -> list[tuple[str, str, str, Image.Image, int, int]]:
     # Prepare all OCR tasks
     ocr_tasks = []
     for character_class, item_type, item_location in items_found:
-        pyautogui.moveTo(item_location.left + (item_location.width / 2),
-                         item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
+        mouse_x = int(item_location.left + (item_location.width / 2))
+        mouse_y = int(item_location.top + (item_location.height / 2))
+        pyautogui.moveTo(mouse_x, mouse_y, duration=MOUSE_MOVE_DELAY)
         img = take_screenshot(None, (0, 0, 940, 900))
-        ocr_tasks.append((character_class, item_type, img))
+        ocr_tasks.append((character_class, item_type, img, mouse_x, mouse_y))
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(detect_text, img, character_class, item_type)
-                   for character_class, item_type, img in ocr_tasks]
+        futures = [executor.submit(detect_text, img, character_class, item_type, mouse_x, mouse_y)
+                   for character_class, item_type, img, mouse_x, mouse_y in ocr_tasks]
 
         # Wait for ALL to finish before processing
         ocr_results = [future.result() for future in concurrent.futures.as_completed(futures)]
     return ocr_results
+
+
+def detect_text(img: Image.Image, character_class: str, item_type: str, mouse_x: int, mouse_y: int) -> tuple[str, str, str, Image.Image, int, int]:
+    box = extract_item(img)
+    if box is not None:
+        img = img.crop(box)
+
+    text = pytesseract.image_to_string(
+        img,
+        lang='eng',
+        config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
+    )
+    m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
+    if m:
+        text = m.group(1).strip()
+    return character_class, item_type, text, img, mouse_x, mouse_y
 
 
 def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
@@ -176,11 +177,11 @@ def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
     return items_found
 
 
-def buy_item() -> None:
+def buy_item(mouse_x: int, mouse_y: int) -> None:
     global buy_counter
     # raise SystemExit
     print('attempting to buy item')
-    pyautogui.click()
+    pyautogui.click(mouse_x, mouse_y)
     pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor outside of merchant window
     pyautogui.press('down')
     pyautogui.press('enter')
