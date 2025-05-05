@@ -4,6 +4,7 @@ import uuid
 import re
 import pyscreeze
 import pytesseract
+import concurrent.futures
 from PIL import Image
 
 from crop_item import extract_item
@@ -134,21 +135,32 @@ def search_items():
 
 def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
     # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
-    search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
-    # search_list = {
-    #     'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
-    #                 'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
-    #                 'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
+    # search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
+    search_list = {
+        'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
+                    'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
+                    'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
     items_found = []
-    for character_class, item_names in search_list.items():
-        for item_type in item_names:
-            try:
-                locations = list(
-                    pyautogui.locateAllOnScreen(r'assets/' + item_type + '.png', region=(190, 137, 574, 572)))
-                for location in locations:
-                    items_found.append((character_class, item_type, location))
-            except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
-                continue
+
+    def search_item(character_class: str, item_type: str):
+        try:
+            locations = list(
+                pyautogui.locateAllOnScreen(r'assets/' + item_type + '.png', region=(190, 137, 574, 572)))
+            return [(character_class, item_type, loc) for loc in locations]
+        except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
+            return []
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Create all the tasks
+        futures = []
+        for character_class, item_names in search_list.items():
+            for item_type in item_names:
+                futures.append(executor.submit(search_item, character_class, item_type))
+
+        # Collect results as they complete
+        for future in concurrent.futures.as_completed(futures):
+            items_found.extend(future.result())
+
     return items_found
 
 
