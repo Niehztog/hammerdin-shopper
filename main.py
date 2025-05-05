@@ -83,24 +83,8 @@ def shop_open_weapons_tab():
 def search_items():
     global item_counter, item_counter_total, buy_counter
     item_counter = dict()
-    # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
-    search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
-    # search_list = {
-    #     'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
-    #                 'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
-    #                 'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
-
-    items_found = []
-    for character_class, item_names in search_list.items():
-        for item_type in item_names:
-            pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY) # move cursor on the red x (close button)
-            try:
-                locations = list(
-                    pyautogui.locateAllOnScreen(r'assets/' + item_type + '.png', region=(190, 137, 574, 572)))
-                for location in locations:
-                    items_found.append((character_class, item_type, location))
-            except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
-                continue
+    pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor on the red x (close button)
+    items_found = find_item_locations()
 
     for character_class, item_type, item_location in items_found:
         pyautogui.moveTo(item_location.left + (item_location.width / 2),
@@ -146,6 +130,26 @@ def search_items():
             if buy_counter < MAX_BUY:
                 buy_item()
     return
+
+
+def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
+    # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
+    search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
+    # search_list = {
+    #     'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
+    #                 'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
+    #                 'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
+    items_found = []
+    for character_class, item_names in search_list.items():
+        for item_type in item_names:
+            try:
+                locations = list(
+                    pyautogui.locateAllOnScreen(r'assets/' + item_type + '.png', region=(190, 137, 574, 572)))
+                for location in locations:
+                    items_found.append((character_class, item_type, location))
+            except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
+                continue
+    return items_found
 
 
 def buy_item() -> None:
