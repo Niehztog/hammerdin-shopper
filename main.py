@@ -52,7 +52,11 @@ def take_screenshot(filename: str | None, region: tuple[int, int, int, int] | No
             return pyautogui.screenshot(region=region)
 
 
-def detect_text(img: Image.Image) -> str:
+def detect_text(img: Image.Image, character_class: str, item_type: str) -> tuple[str, str, str, Image.Image]:
+    box = extract_item(img)
+    if box is not None:
+        img = img.crop(box)
+
     text = pytesseract.image_to_string(
         img,
         lang='eng',
@@ -61,7 +65,7 @@ def detect_text(img: Image.Image) -> str:
     m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
     if m:
         text = m.group(1).strip()
-    return text
+    return character_class, item_type, text, img
 
 
 def generate_random_filename(filename: str) -> str:
@@ -86,18 +90,9 @@ def search_items():
     item_counter = dict()
     pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor on the red x (close button)
     items_found = find_item_locations()
+    ocr_results = extract_item_description(items_found)
 
-    for character_class, item_type, item_location in items_found:
-        pyautogui.moveTo(item_location.left + (item_location.width / 2),
-                         item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
-        img = take_screenshot(None, (0, 0, 940, 900))
-
-        box = extract_item(img)
-        if box is not None:
-            img = img.crop(box)
-
-        item_description = detect_text(img)
-
+    for character_class, item_type, item_description, img in ocr_results:
         if not re.search(r'2.*SKILL LEVELS', item_description, re.IGNORECASE):
             continue
 
@@ -131,6 +126,23 @@ def search_items():
             if buy_counter < MAX_BUY:
                 buy_item()
     return
+
+
+def extract_item_description(items_found: list[tuple[str, str, pyscreeze.Box]]) -> list[tuple[str, str, str, Image.Image]]:
+    # Prepare all OCR tasks
+    ocr_tasks = []
+    for character_class, item_type, item_location in items_found:
+        pyautogui.moveTo(item_location.left + (item_location.width / 2),
+                         item_location.top + (item_location.height / 2), duration=MOUSE_MOVE_DELAY)
+        img = take_screenshot(None, (0, 0, 940, 900))
+        ocr_tasks.append((character_class, item_type, img))
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(detect_text, img, character_class, item_type)
+                   for character_class, item_type, img in ocr_tasks]
+
+        # Wait for ALL to finish before processing
+        ocr_results = [future.result() for future in concurrent.futures.as_completed(futures)]
+    return ocr_results
 
 
 def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
@@ -185,7 +197,7 @@ def exit_shop_window() -> None:
 def start_to_drognan() -> None:
     move_and_click(1114, 846)  # walk to and interact with Drognan
     if char_type == Diablo2Class.SORCERESS:
-        move_and_click(1234, 354)  # open merchant window (sorceress)
+        move_and_click(1239, 344)  # open merchant window (sorceress)
     else:
         move_and_click(1234, 374)  # open merchant window (barbarian)
 
