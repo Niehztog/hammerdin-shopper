@@ -19,7 +19,7 @@ class Diablo2Class(Enum):
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
 MAX_BUY = 4
-MAX_SESSIONS = 5
+MAX_SESSIONS = 0
 shopping_session_counter = 0
 shopping_session_durations = list()
 item_counter = dict()
@@ -234,14 +234,6 @@ def main_shopping_loop(first_walk: bool = False):
         log_shopping_session(time_stop - time_start)
 
     while True:
-        exit_shop_window()
-
-        time_start = time.time()
-        drognan_to_out(first_walk)
-        first_walk = False
-        out_to_drognan()
-        shop_open_weapons_tab()
-        search_items()
         if buy_counter >= MAX_BUY:
             draw_end_statistics('item buy counter reached limit', time.time() - time_total_start)
             break
@@ -249,6 +241,13 @@ def main_shopping_loop(first_walk: bool = False):
             draw_end_statistics('shopping session counter reached limit', time.time() - time_total_start)
             break
 
+        exit_shop_window()
+        time_start = time.time()
+        drognan_to_out(first_walk)
+        first_walk = False
+        out_to_drognan()
+        shop_open_weapons_tab()
+        search_items()
         time_stop = time.time()
         log_shopping_session(time_stop - time_start)
 
