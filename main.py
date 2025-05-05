@@ -4,6 +4,8 @@ import uuid
 import re
 import pyscreeze
 import pytesseract
+from PIL import Image
+
 from crop_item import extract_item
 from enum import Enum, auto
 
@@ -27,7 +29,7 @@ item_counter_total = dict()
 time_total_start = time.time()
 char_type = Diablo2Class.SORCERESS
 
-def move_and_click(x, y, right_click: bool = False):
+def move_and_click(x: int, y: int, right_click: bool = False) -> None:
     pyautogui.moveTo(x, y, duration=MOUSE_MOVE_DELAY)
     if right_click:
         pyautogui.click(button='right')
@@ -35,7 +37,7 @@ def move_and_click(x, y, right_click: bool = False):
         pyautogui.click()
 
 
-def take_screenshot(filename: str | None, region=None):
+def take_screenshot(filename: str | None, region: tuple[int, int, int, int] | None = None) -> Image.Image | None:
     if isinstance(filename, str):
         filename = generate_random_filename(filename)
         if region is None:
@@ -49,7 +51,7 @@ def take_screenshot(filename: str | None, region=None):
             return pyautogui.screenshot(region=region)
 
 
-def detect_text(img):
+def detect_text(img: Image.Image) -> str:
     text = pytesseract.image_to_string(
         img,
         lang='eng',
@@ -61,7 +63,7 @@ def detect_text(img):
     return text
 
 
-def generate_random_filename(filename: str):
+def generate_random_filename(filename: str) -> str:
     return filename + '_' + str(uuid.uuid4()) + '.png'
 
 
@@ -81,8 +83,8 @@ def shop_open_weapons_tab():
 def search_items():
     global item_counter, item_counter_total, buy_counter
     item_counter = dict()
-    search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
     # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
+    search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
     # search_list = {
     #     'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
     #                 'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
@@ -146,7 +148,7 @@ def search_items():
     return
 
 
-def buy_item():
+def buy_item() -> None:
     global buy_counter
     # raise SystemExit
     print('attempting to buy item')
@@ -157,14 +159,14 @@ def buy_item():
     buy_counter += 1
 
 
-def exit_shop_window():
+def exit_shop_window() -> None:
     if pyautogui.position() == (784, 25):
         pyautogui.click()
     else:
         move_and_click(784, 25)  # click red x button
 
 
-def start_to_drognan():
+def start_to_drognan() -> None:
     move_and_click(1114, 846)  # walk to and interact with Drognan
     if char_type == Diablo2Class.SORCERESS:
         move_and_click(1234, 354)  # open merchant window (sorceress)
@@ -172,7 +174,7 @@ def start_to_drognan():
         move_and_click(1234, 374)  # open merchant window (barbarian)
 
 
-def drognan_to_out(first_walk: bool = False):
+def drognan_to_out(first_walk: bool = False) -> None:
     if first_walk is True:
         move_and_click(2059, 294)  # walk from Drognan outside of town
         move_and_click(1425, 366)  # walk from Drognan outside of town
@@ -185,7 +187,7 @@ def drognan_to_out(first_walk: bool = False):
             move_and_click(1480, 354)  # walk from Drognan outside of town
 
 
-def out_to_drognan():
+def out_to_drognan() -> None:
     if char_type == Diablo2Class.SORCERESS:
         move_and_click(456, 954, True)  # teleport from outside to Drognan
         move_and_click(1195, 489)  # interact with Drognan
@@ -196,13 +198,13 @@ def out_to_drognan():
         move_and_click(1150, 335)  # open merchant window
 
 
-def log_text(character_class: str, text: str):
+def log_text(character_class: str, text: str) -> None:
     file_object = open('log_' + character_class + '.txt', 'a')
     file_object.write('\n' + '===' + '\n' + text)
     file_object.close()
 
 
-def log_shopping_session(elapsed_time: float):
+def log_shopping_session(elapsed_time: float) -> None:
     global shopping_session_counter, shopping_session_durations
     if shopping_session_counter > 0:
         shopping_session_durations.append(elapsed_time)
@@ -212,7 +214,7 @@ def log_shopping_session(elapsed_time: float):
           + ', results: ' + str(item_counter))
 
 
-def draw_end_statistics(exit_reason: str, elapsed_time: float):
+def draw_end_statistics(exit_reason: str, elapsed_time: float) -> None:
     mean_duration = sum(shopping_session_durations) / len(shopping_session_durations)
     print(exit_reason + ', stopping'
         + ', total duration: ' + time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
@@ -220,7 +222,7 @@ def draw_end_statistics(exit_reason: str, elapsed_time: float):
         + ', results: ' + str(item_counter_total))
 
 
-def main_shopping_loop(first_walk: bool = False):
+def main_shopping_loop(first_walk: bool = False) -> None:
 
     global time_total_start
 

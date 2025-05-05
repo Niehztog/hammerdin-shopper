@@ -6,7 +6,7 @@ from PIL import Image
 # import pytesseract
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-def extract_item(im):
+def extract_item(im: Image.Image) -> tuple[int, int, int, int] | None:
     width, height = im.size
 
     line_horizontal_width, line_horizontal_height = 128, 1
