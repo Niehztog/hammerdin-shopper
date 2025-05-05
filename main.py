@@ -7,12 +7,6 @@ import pytesseract
 from crop_item import extract_item
 from enum import Enum, auto
 
-# try:
-#     from PIL import Image
-# except ImportError:
-#     import Image
-
-
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 class Diablo2Class(Enum):
@@ -25,8 +19,9 @@ class Diablo2Class(Enum):
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
 MAX_BUY = 4
-MAX_SESSIONS = 0
+MAX_SESSIONS = 5
 shopping_session_counter = 0
+shopping_session_durations = list()
 item_counter = dict()
 item_counter_total = dict()
 time_total_start = time.time()
@@ -86,11 +81,12 @@ def shop_open_weapons_tab():
 def search_items():
     global item_counter, item_counter_total, buy_counter
     item_counter = dict()
+    search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
     # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
-    search_list = {
-        'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
-                    'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
-                    'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
+    # search_list = {
+    #     'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
+    #                 'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
+    #                 'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
 
     items_found = []
     for character_class, item_names in search_list.items():
@@ -207,7 +203,9 @@ def log_text(character_class: str, text: str):
 
 
 def log_shopping_session(elapsed_time: float):
-    global shopping_session_counter
+    global shopping_session_counter, shopping_session_durations
+    if shopping_session_counter > 0:
+        shopping_session_durations.append(elapsed_time)
     shopping_session_counter += 1
     print('shopping session #' + str(shopping_session_counter)
           + ', time elapsed ' + str(round(elapsed_time, 2)) + ' s'
@@ -215,8 +213,10 @@ def log_shopping_session(elapsed_time: float):
 
 
 def draw_end_statistics(exit_reason: str, elapsed_time: float):
+    mean_duration = sum(shopping_session_durations) / len(shopping_session_durations)
     print(exit_reason + ', stopping'
         + ', total duration: ' + time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+        + f", mean duration: {mean_duration:.2f} seconds"
         + ', results: ' + str(item_counter_total))
 
 
