@@ -152,7 +152,8 @@ def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
     search_list = {
         'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
                     'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
-                    'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'rune_scepter']}
+                    'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'grand_scepter_lightred',
+                    'rune_scepter']}
     items_found = []
 
     def search_item(character_class: str, item_type: str):
