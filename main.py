@@ -21,7 +21,7 @@ class Diablo2Class(Enum):
 
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
-MAX_BUY = 4
+MAX_BUY = 6
 MAX_SESSIONS = 0
 shopping_session_counter = 0
 shopping_session_durations = list()
@@ -84,6 +84,7 @@ def search_items():
         item_counter_total[item_type] = item_counter_total.get(item_type, 0) + 1
         img.save(generate_random_filename(item_type))
         log_text(character_class, item_description)
+
         # if (character_class == 'paladin'
         #     and 'PALADIN SKILL LEVELS' in item_description and 'FASTER CAST RATE' in item_description
         #     and ('concentration' in item_description.lower() or 'shield' in item_description.lower()
@@ -119,7 +120,7 @@ def extract_item_description(items_found: list[tuple[str, str, pyscreeze.Box]]) 
         mouse_x = int(item_location.left + (item_location.width / 2))
         mouse_y = int(item_location.top + (item_location.height / 2))
         pyautogui.moveTo(mouse_x, mouse_y, duration=MOUSE_MOVE_DELAY)
-        img = take_screenshot(None, (0, 0, 940, 900))
+        img = take_screenshot(None, (0, 0, 940, 960))
         ocr_tasks.append((character_class, item_type, img, mouse_x, mouse_y))
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [executor.submit(detect_text, img, character_class, item_type, mouse_x, mouse_y)
@@ -143,6 +144,7 @@ def detect_text(img: Image.Image, character_class: str, item_type: str, mouse_x:
     m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
     if m:
         text = m.group(1).strip()
+    text = re.sub(r'\n\s*\n', '\n', text).strip()
     return character_class, item_type, text, img, mouse_x, mouse_y
 
 
@@ -193,7 +195,8 @@ def exit_shop_window() -> None:
     if pyautogui.position() == (784, 25):
         pyautogui.click()
     else:
-        move_and_click(784, 25)  # click red x button
+        # move_and_click(784, 25)  # click red x button
+        pyautogui.press('esc')
 
 
 def start_to_drognan() -> None:
