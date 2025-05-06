@@ -120,7 +120,7 @@ def extract_item_description(items_found: list[tuple[str, str, pyscreeze.Box]]) 
         mouse_x = int(item_location.left + (item_location.width / 2))
         mouse_y = int(item_location.top + (item_location.height / 2))
         pyautogui.moveTo(mouse_x, mouse_y, duration=MOUSE_MOVE_DELAY)
-        img = take_screenshot(None, (0, 0, 940, 960))
+        img = take_screenshot(None, (0, 0, 940, 970))
         ocr_tasks.append((character_class, item_type, img, mouse_x, mouse_y))
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [executor.submit(detect_text, img, character_class, item_type, mouse_x, mouse_y)
