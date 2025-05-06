@@ -118,7 +118,7 @@ def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]
         'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
                     'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
                     'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'grand_scepter_lightred',
-                    'rune_scepter']
+                    'grand_scepter_lightbrown','rune_scepter']
     }
     items_processed = []
     mouse_lock = threading.Lock()
