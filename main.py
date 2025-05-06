@@ -5,6 +5,7 @@ import re
 import pyscreeze
 import pytesseract
 import concurrent.futures
+import threading
 from PIL import Image
 
 from crop_item import extract_item
@@ -28,7 +29,7 @@ shopping_session_durations = list()
 item_counter = dict()
 item_counter_total = dict()
 time_total_start = time.time()
-char_type = Diablo2Class.SORCERESS
+char_type = Diablo2Class.BARBARIAN
 
 def move_and_click(x: int, y: int, right_click: bool = False) -> None:
     pyautogui.moveTo(x, y, duration=MOUSE_MOVE_DELAY)
@@ -73,10 +74,9 @@ def search_items():
     global item_counter, item_counter_total, buy_counter
     item_counter = dict()
     pyautogui.moveTo(784, 25, duration=MOUSE_MOVE_DELAY)  # move cursor on the red x (close button)
-    items_found = find_item_locations()
-    ocr_results = extract_item_description(items_found)
+    items_found = find_and_process_items()
 
-    for character_class, item_type, item_description, img, mouse_x, mouse_y in ocr_results:
+    for character_class, item_type, item_description, img, mouse_x, mouse_y in items_found:
         if not re.search(r'2.*SKILL LEVELS', item_description, re.IGNORECASE):
             continue
 
@@ -113,71 +113,58 @@ def search_items():
     return
 
 
-def extract_item_description(items_found: list[tuple[str, str, pyscreeze.Box]]) -> list[tuple[str, str, str, Image.Image, int, int]]:
-    # Prepare all OCR tasks
-    ocr_tasks = []
-    for character_class, item_type, item_location in items_found:
-        mouse_x = int(item_location.left + (item_location.width / 2))
-        mouse_y = int(item_location.top + (item_location.height / 2))
-        pyautogui.moveTo(mouse_x, mouse_y, duration=MOUSE_MOVE_DELAY)
-        img = take_screenshot(None, (0, 0, 940, 970))
-        ocr_tasks.append((character_class, item_type, img, mouse_x, mouse_y))
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(detect_text, img, character_class, item_type, mouse_x, mouse_y)
-                   for character_class, item_type, img, mouse_x, mouse_y in ocr_tasks]
-
-        # Wait for ALL to finish before processing
-        ocr_results = [future.result() for future in concurrent.futures.as_completed(futures)]
-    return ocr_results
-
-
-def detect_text(img: Image.Image, character_class: str, item_type: str, mouse_x: int, mouse_y: int) -> tuple[str, str, str, Image.Image, int, int]:
-    box = extract_item(img)
-    if box is not None:
-        img = img.crop(box)
-
-    text = pytesseract.image_to_string(
-        img,
-        lang='eng',
-        config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
-    )
-    m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
-    if m:
-        text = m.group(1).strip()
-    text = re.sub(r'\n\s*\n', '\n', text).strip()
-    return character_class, item_type, text, img, mouse_x, mouse_y
-
-
-def find_item_locations() -> list[tuple[str, str, pyscreeze.Box]]:
-    # search_list = {'paladin': ['grand_scepter', 'rune_scepter'], 'necromancer': ['wand', 'bone_wand', 'yew_wand']}
-    # search_list = {'paladin': ['grand_scepter_green', 'rune_scepter']}
+def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]]:
     search_list = {
         'paladin': ['grand_scepter_green', 'grand_scepter_bright', 'grand_scepter_bright2', 'grand_scepter_brown',
                     'grand_scepter_grey', 'grand_scepter_black', 'grand_scepter_yellow', 'grand_scepter_red',
                     'grand_scepter_lightblue', 'grand_scepter_blue', 'grand_scepter_darkblue', 'grand_scepter_lightred',
-                    'rune_scepter']}
-    items_found = []
+                    'rune_scepter']
+    }
+    items_processed = []
+    mouse_lock = threading.Lock()
 
-    def search_item(character_class: str, item_type: str):
+    def process_item(img: Image.Image, character_class: str, item_type: str):
         try:
-            locations = list(
-                pyautogui.locateAllOnScreen(r'assets/' + item_type + '.png', region=(190, 137, 574, 572)))
-            return [(character_class, item_type, loc) for loc in locations]
+            locations = list(pyautogui.locateAll(r'assets/' + item_type + '.png', img, region=(190, 137, 574, 572)))
+            for loc in locations:
+                mouse_x = int(loc.left + (loc.width / 2))
+                mouse_y = int(loc.top + (loc.height / 2))
+
+                with mouse_lock:
+                    pyautogui.moveTo(mouse_x, mouse_y, duration=0.1)
+                    img_merchant_window = take_screenshot(None, (0, 0, 940, 970))
+
+                box = extract_item(img_merchant_window)
+                if box is not None:
+                    img_merchant_window = img_merchant_window.crop(box)
+                else:
+                    print('Failed to locate item box')
+                    img_merchant_window.save(generate_random_filename('no_item_box'))
+
+                text = pytesseract.image_to_string(
+                    img_merchant_window,
+                    lang='eng',
+                    config='-c tessedit_char_blacklist="@®™*<>" --psm 6'
+                )
+                m = re.search(': [0-9]{4,}(.+UNDEAD)', text, re.DOTALL)
+                if m:
+                    text = m.group(1).strip()
+                text = re.sub(r'\n\s*\n', '\n', text).strip()
+                items_processed.append((character_class, item_type, text, img_merchant_window, mouse_x, mouse_y))
         except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
-            return []
+            return
+
+    img = take_screenshot(None, None)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Create all the tasks
         futures = []
         for character_class, item_names in search_list.items():
             for item_type in item_names:
-                futures.append(executor.submit(search_item, character_class, item_type))
+                futures.append(executor.submit(process_item, img, character_class, item_type))
 
-        # Collect results as they complete
-        for future in concurrent.futures.as_completed(futures):
-            items_found.extend(future.result())
+        concurrent.futures.wait(futures)
 
-    return items_found
+    return items_processed
 
 
 def buy_item(mouse_x: int, mouse_y: int) -> None:
