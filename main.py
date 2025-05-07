@@ -22,7 +22,7 @@ class Diablo2Class(Enum):
 
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
-MAX_BUY = 6
+MAX_BUY = 1
 MAX_SESSIONS = 0
 shopping_session_counter = 0
 shopping_session_durations = list()
@@ -32,14 +32,14 @@ time_total_start = time.time()
 char_type = Diablo2Class.SORCERESS
 
 
-def move_and_click(x: int, y: int, right_click: bool = False, duration: float = MOUSE_MOVE_DELAY, delay: float = 0.2) -> None:
+def move_and_click(x: int, y: int, right_click: bool = False, duration: float = MOUSE_MOVE_DELAY, delay: float = 0.2, combined: bool = False) -> None:
     old = pyautogui.PAUSE
     pyautogui.PAUSE = delay
-    pyautogui.moveTo(x, y, duration=duration)
-    if right_click:
-        pyautogui.click(button='right')
+    if combined:
+        pyautogui.click(x, y, button=('right' if right_click else 'left'), duration=duration)
     else:
-        pyautogui.click()
+        pyautogui.moveTo(x, y, duration=duration)
+        pyautogui.click(button=('right' if right_click else 'left'))
     pyautogui.PAUSE = old
 
 
@@ -69,7 +69,7 @@ def shop_open_weapons_tab():
             continue
         move_and_click(btn_weapons_tab.left + (btn_weapons_tab.width / 2),
                        btn_weapons_tab.top + (btn_weapons_tab.height / 2),
-                       duration=0.05, delay=pyautogui.PAUSE)
+                       duration=0.05, delay=pyautogui.PAUSE, combined=True)
         return
     take_screenshot('error')
     exit("weapons tab not found")
@@ -137,7 +137,7 @@ def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]
 
                 with mouse_lock:
                     pyautogui.moveTo(mouse_x, mouse_y, duration=0.1)
-                    img_merchant_window = take_screenshot(None, (0, 0, 940, 980))
+                    img_merchant_window = take_screenshot(None, (0, 0, 940, 1010))
 
                 box = extract_item(img_merchant_window)
                 if box is not None:
@@ -183,11 +183,14 @@ def buy_item(mouse_x: int, mouse_y: int) -> None:
 
 
 def exit_shop_window() -> None:
+    old = pyautogui.PAUSE
+    pyautogui.PAUSE = 0.1
     if pyautogui.position() == (784, 25):
         pyautogui.click()
     else:
         # move_and_click(784, 25)  # click red x button
         pyautogui.press('esc')
+    pyautogui.PAUSE = old
 
 
 def start_to_drognan() -> None:
@@ -200,14 +203,14 @@ def start_to_drognan() -> None:
 
 def drognan_to_out(first_walk: bool = False) -> None:
     if first_walk is True:
-        move_and_click(2059, 294, duration=0.05, delay=pyautogui.PAUSE)  # walk from Drognan outside of town
+        move_and_click(2059, 294, duration=0.05, delay=pyautogui.PAUSE, combined=True)  # walk from Drognan outside of town
         move_and_click(1425, 366, duration=0.05, delay=pyautogui.PAUSE)  # walk from Drognan outside of town
     else:
         if char_type == Diablo2Class.SORCERESS:
-            move_and_click(1970, 249, duration=0.05, delay=pyautogui.PAUSE)  # walk from Drognan outside of town
+            move_and_click(1970, 249, duration=0.05, delay=pyautogui.PAUSE, combined=True)  # walk from Drognan outside of town
             move_and_click(1400, 373, duration=0.05, delay=0.8)  # walk from Drognan outside of town
         else:
-            move_and_click(1931, 241, duration=0.05, delay=pyautogui.PAUSE)  # walk from Drognan outside of town
+            move_and_click(1931, 241, duration=0.05, delay=pyautogui.PAUSE, combined=True)  # walk from Drognan outside of town
             move_and_click(1480, 354, delay=pyautogui.PAUSE)  # walk from Drognan outside of town
 
 
@@ -255,7 +258,6 @@ def main_shopping_loop(first_walk: bool = False) -> None:
         start_to_drognan()
         pyautogui.PAUSE = 0.2
         shop_open_weapons_tab()
-        # raise SystemExit
         search_items()
         time_stop = time.time()
         log_shopping_session(time_stop - time_start)
