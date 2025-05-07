@@ -33,32 +33,20 @@ char_type = Diablo2Class.SORCERESS
 
 
 def move_and_click(x: int, y: int, right_click: bool = False, duration: float = MOUSE_MOVE_DELAY, delay: float = 0.2, combined: bool = False) -> None:
-    old = pyautogui.PAUSE
-    pyautogui.PAUSE = delay
-    if combined:
-        pyautogui.click(x, y, button=('right' if right_click else 'left'), duration=duration)
-    else:
-        pyautogui.moveTo(x, y, duration=duration)
-        pyautogui.click(button=('right' if right_click else 'left'))
+    old, pyautogui.PAUSE = pyautogui.PAUSE, delay
+    (
+        pyautogui.click(x, y, button='right' if right_click else 'left', duration=duration)
+        if combined
+        else (
+            pyautogui.moveTo(x, y, duration=duration),
+            pyautogui.click(button='right' if right_click else 'left')
+        )
+    )
     pyautogui.PAUSE = old
 
 
-def take_screenshot(filename: str | None, region: tuple[int, int, int, int] | None = None) -> Image.Image | None:
-    if isinstance(filename, str):
-        filename = generate_random_filename(filename)
-        if region is None:
-            return pyautogui.screenshot(filename)
-        else:
-            return pyautogui.screenshot(filename, region=region)
-    else:
-        if region is None:
-            return pyautogui.screenshot()
-        else:
-            return pyautogui.screenshot(region=region)
-
-
 def generate_random_filename(filename: str) -> str:
-    return filename + '_' + str(uuid.uuid4()) + '.png'
+    return f'{filename}_{uuid.uuid4()}.png'
 
 
 def shop_open_weapons_tab():
@@ -71,7 +59,7 @@ def shop_open_weapons_tab():
                        btn_weapons_tab.top + (btn_weapons_tab.height / 2),
                        duration=0.05, delay=pyautogui.PAUSE, combined=True)
         return
-    take_screenshot('error')
+    pyautogui.screenshot(generate_random_filename('error'))
     exit("weapons tab not found")
 
 
@@ -137,7 +125,7 @@ def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]
 
                 with mouse_lock:
                     pyautogui.moveTo(mouse_x, mouse_y, duration=0.1)
-                    img_merchant_window = take_screenshot(None, (0, 0, 940, 1010))
+                    img_merchant_window = pyautogui.screenshot(region=(0, 0, 940, 1010))
 
                 box = extract_item(img_merchant_window)
                 if box is not None:
@@ -159,7 +147,7 @@ def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]
         except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
             return
 
-    img = take_screenshot(None, None)
+    img = pyautogui.screenshot()
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
@@ -194,7 +182,7 @@ def exit_shop_window() -> None:
 
 
 def start_to_drognan() -> None:
-    move_and_click(1114, 846, delay=pyautogui.PAUSE)  # walk to and interact with Drognan
+    move_and_click(1114, 846, delay=pyautogui.PAUSE, combined=True)  # walk to and interact with Drognan
     if char_type == Diablo2Class.SORCERESS:
         move_and_click(1239, 344, duration=0.05, delay=pyautogui.PAUSE)  # open merchant window (sorceress)
     else:
@@ -226,9 +214,8 @@ def out_to_drognan() -> None:
 
 
 def log_text(character_class: str, text: str) -> None:
-    file_object = open('log_' + character_class + '.txt', 'a')
-    file_object.write('\n' + '===' + '\n' + text)
-    file_object.close()
+    with open(f'log_{character_class}.txt', 'a') as file_object:
+        file_object.write(f'\n===\n{text}')
 
 
 def log_shopping_session(elapsed_time: float) -> None:
@@ -249,19 +236,19 @@ def draw_end_statistics(exit_reason: str, elapsed_time: float) -> None:
         + ', results: ' + str(item_counter_total))
 
 
-def main_shopping_loop(first_walk: bool = False) -> None:
-
+def main_shopping_loop() -> None:
     global time_total_start
 
-    if first_walk is True:
-        time_start = time.time()
-        start_to_drognan()
-        pyautogui.PAUSE = 0.2
-        shop_open_weapons_tab()
-        search_items()
-        time_stop = time.time()
-        log_shopping_session(time_stop - time_start)
+    # Initial setup (first run)
+    time_start = time.time()
+    start_to_drognan()
+    pyautogui.PAUSE = 0.2
+    shop_open_weapons_tab()
+    search_items()
+    time_stop = time.time()
+    log_shopping_session(time_stop - time_start)
 
+    # Main loop (subsequent runs)
     while True:
         if buy_counter >= MAX_BUY:
             draw_end_statistics('item buy counter reached limit', time.time() - time_total_start)
@@ -273,8 +260,7 @@ def main_shopping_loop(first_walk: bool = False) -> None:
         exit_shop_window()
         pyautogui.PAUSE = 0.7
         time_start = time.time()
-        drognan_to_out(first_walk)
-        first_walk = False
+        drognan_to_out(shopping_session_counter == 1) # First movement out uses different coordinates
         out_to_drognan()
         pyautogui.PAUSE = 0.2
         shop_open_weapons_tab()
@@ -291,9 +277,9 @@ if __name__ == '__main__':
 
     print(pyautogui.position())  # current mouse x and y
     # pyautogui.displayMousePosition()
-    #  exit()
+    # exit()
 
     try:
-        main_shopping_loop(True)
+        main_shopping_loop()
     except pyautogui.FailSafeException:
         draw_end_statistics('User interrupted', time.time() - time_total_start)
