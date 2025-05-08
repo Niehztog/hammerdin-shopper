@@ -22,7 +22,7 @@ def extract_item(im: Image.Image) -> tuple[int, int, int, int] | None:
     # print(upper_horizontal)
 
     try:
-        lower_horizontal = pyautogui.locate(line_horizontal, im, region=(upper_horizontal.left, upper_horizontal.top + 1, 128, height - upper_horizontal.top - 1))
+        lower_horizontal = pyautogui.locate(line_horizontal, im, region=(upper_horizontal.left, upper_horizontal.top + 1, 128+1, height - upper_horizontal.top - 1))
     except pyautogui.ImageNotFoundException:
         return
     # print(lower_horizontal)
@@ -49,6 +49,7 @@ if __name__ == '__main__':
         im = Image.open(filename)
         box = extract_item(im)
         if box is None:
+            print("Box not found: " + filename)
             continue
         target_filename = os.path.dirname(filename) + '\\item_' + os.path.basename(filename)
         im.crop(box).save(target_filename)
