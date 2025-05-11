@@ -193,33 +193,33 @@ def exit_shop_window() -> None:
 def start_to_drognan() -> None:
     move_and_click(1114, 846, delay=0.7, mode='clickOnly') # walk to and interact with Drognan
     if char_type == Diablo2Class.SORCERESS:
-        move_and_click(1239, 344, duration=0.05, delay=0.7) # open merchant window (sorceress)
+        move_and_click(1239, 344, duration=0.05, delay=0.7, mode='moveAndClick') # open merchant window (sorceress)
     else:
-        move_and_click(1234, 374, duration=0.05, delay=0.7) # open merchant window (barbarian)
+        move_and_click(1234, 374, duration=0.05, delay=0.7, mode='moveAndClick') # open merchant window (barbarian)
 
 
 def drognan_to_out(first_walk: bool = False) -> None:
     if first_walk is True:
         move_and_click(2059, 294, duration=0.05, delay=0.7, mode='clickOnly') # walk from Drognan outside of town
-        move_and_click(1425, 366, duration=0.05, delay=0.7) # walk from Drognan outside of town
+        move_and_click(1425, 366, duration=0.05, delay=0.7, mode='moveAndClick') # walk from Drognan outside of town
     else:
         if char_type == Diablo2Class.SORCERESS:
             move_and_click(1970, 249, duration=0.05, delay=0.7, mode='clickOnly') # walk from Drognan outside of town
-            move_and_click(1400, 373, duration=0.05, delay=0.8) # walk from Drognan outside of town
+            move_and_click(1400, 373, duration=0.05, delay=0.8, mode='moveAndClick') # walk from Drognan outside of town
         else:
             move_and_click(1931, 241, duration=0.05, delay=0.7, mode='clickOnly') # walk from Drognan outside of town
-            move_and_click(1480, 354, delay=0.7) # walk from Drognan outside of town
+            move_and_click(1480, 354, delay=0.7, mode='moveAndClick') # walk from Drognan outside of town
 
 
 def out_to_drognan() -> None:
     if char_type == Diablo2Class.SORCERESS:
-        move_and_click(456, 954, True, duration=0.05, delay=0.2) # teleport from outside to Drognan
-        move_and_click(1195, 489, duration=0.05, delay=0.25) # interact with Drognan
-        move_and_click(1190, 308, duration=0.05, delay=0.25) # open merchant window
+        move_and_click(456, 954, True, duration=0.05, delay=0.2, mode='moveAndClick') # teleport from outside to Drognan
+        move_and_click(1195, 489, duration=0.05, delay=0.25, mode='moveAndClick') # interact with Drognan
+        move_and_click(1190, 308, duration=0.05, delay=0.25, mode='moveAndClick') # open merchant window
     else:
-        move_and_click(820, 809, delay=0.7) # walk from outside of town inside
-        move_and_click(840, 601, delay=0.7) # walk from inside to Drognan
-        move_and_click(1150, 335, duration=0.05, delay=0.7) # open merchant window
+        move_and_click(820, 809, delay=0.7, mode='moveAndClick') # walk from outside of town inside
+        move_and_click(840, 601, delay=0.7, mode='moveAndClick') # walk from inside to Drognan
+        move_and_click(1150, 335, duration=0.05, delay=0.7, mode='moveAndClick') # open merchant window
 
 
 def log_text(character_class: str, text: str) -> None:
