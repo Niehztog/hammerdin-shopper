@@ -25,7 +25,7 @@ class WeaponsTabNotFoundError(Exception):
 
 MOUSE_MOVE_DELAY = 0.2
 buy_counter = 0
-MAX_BUY = 1
+MAX_BUY = 5
 MAX_SESSIONS = 0
 shopping_session_counter = 0
 shopping_session_durations = list()
@@ -35,16 +35,25 @@ time_total_start = time.time()
 char_type = Diablo2Class.SORCERESS
 
 
-def move_and_click(x: int, y: int, right_click: bool = False, duration: float = MOUSE_MOVE_DELAY, delay: float = 0.2, combined: bool = False) -> None:
+def move_and_click(x: int | None, y: int | None, right_click: bool = False, duration: float = MOUSE_MOVE_DELAY, delay: float = 0.2, mode: str = 'moveAndClick') -> None:
     old, pyautogui.PAUSE = pyautogui.PAUSE, delay
-    (
+
+    if mode == 'clickOnly':
         pyautogui.click(x, y, button='right' if right_click else 'left', duration=duration)
-        if combined
-        else (
-            pyautogui.moveTo(x, y, duration=duration),
-            pyautogui.click(button='right' if right_click else 'left')
-        )
-    )
+    elif mode == 'moveOnly':
+        pyautogui.moveTo(x, y, duration=duration)
+    elif mode == 'moveAndClick':
+        pyautogui.moveTo(x, y, duration=duration)
+        pyautogui.click(button='right' if right_click else 'left')
+    else:
+        raise ValueError("Invalid mode. Use 'clickOnly', 'moveOnly', or 'moveAndClick'.")
+
+    pyautogui.PAUSE = old
+
+
+def press_key(key: str, delay: float = 0.2) -> None:
+    old, pyautogui.PAUSE = pyautogui.PAUSE, delay
+    pyautogui.press(keys=key)
     pyautogui.PAUSE = old
 
 
@@ -58,9 +67,9 @@ def shop_open_weapons_tab():
             btn_weapons_tab = pyautogui.locateOnScreen(btn_weapons_tab_filename, region=(189, 95, 575, 41))
         except pyautogui.ImageNotFoundException:
             continue
-        move_and_click(btn_weapons_tab.left + (btn_weapons_tab.width / 2),
-                       btn_weapons_tab.top + (btn_weapons_tab.height / 2),
-                       duration=0.05, delay=pyautogui.PAUSE, combined=True)
+        move_and_click(int(btn_weapons_tab.left + (btn_weapons_tab.width / 2)),
+                       int(btn_weapons_tab.top + (btn_weapons_tab.height / 2)),
+                       duration=0.05, delay=0.2, mode='clickOnly')
         return
     pyautogui.screenshot(generate_random_filename('error'))
     raise WeaponsTabNotFoundError("Weapons tab not found")
@@ -69,7 +78,7 @@ def shop_open_weapons_tab():
 def search_items():
     global item_counter, item_counter_total, buy_counter
     item_counter = dict()
-    pyautogui.moveTo(784, 25, duration=0.05)  # move cursor on the red x (close button)
+    move_and_click(784, 25, duration=0.05, delay=0.2, mode='moveOnly')  # move cursor on the red x (close button)
     items_found = find_and_process_items()
 
     for character_class, item_type, item_description, img, mouse_x, mouse_y in items_found:
@@ -127,7 +136,7 @@ def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]
                 mouse_y = int(loc.top + (loc.height / 2))
 
                 with mouse_lock:
-                    pyautogui.moveTo(mouse_x, mouse_y, duration=0.1)
+                    move_and_click(mouse_x, mouse_y, duration=0.1, delay=0.2, mode='moveOnly')
                     img_merchant_window = pyautogui.screenshot(region=(0, 0, 950, 1010))
 
                 box = extract_item(img_merchant_window)
@@ -166,54 +175,51 @@ def find_and_process_items() -> list[tuple[str, str, str, Image.Image, int, int]
 def buy_item(mouse_x: int, mouse_y: int) -> None:
     global buy_counter
     print('attempting to buy item')
-    pyautogui.click(mouse_x, mouse_y)
-    pyautogui.moveTo(784, 25, duration=0.05)  # move cursor outside of merchant window
-    pyautogui.press('down')
-    pyautogui.press('enter')
+    move_and_click(mouse_x, mouse_y, duration=0.05, delay=0.2, mode='clickOnly')
+    move_and_click(784, 25, duration=0.05, delay=0.2, mode='moveOnly')  # move cursor outside of merchant window
+    press_key(key='down', delay=0.2)
+    press_key(key='enter', delay=0.2)
     buy_counter += 1
 
 
 def exit_shop_window() -> None:
-    old = pyautogui.PAUSE
-    pyautogui.PAUSE = 0.1
     if pyautogui.position() == (784, 25):
-        pyautogui.click()
+        move_and_click(None, None, duration=0.0, delay=0.1, mode='clickOnly')
     else:
         # move_and_click(784, 25)  # click red x button
-        pyautogui.press('esc')
-    pyautogui.PAUSE = old
+        press_key(key='esc', delay=0.1)
 
 
 def start_to_drognan() -> None:
-    move_and_click(1114, 846, delay=pyautogui.PAUSE, combined=True) # walk to and interact with Drognan
+    move_and_click(1114, 846, delay=0.7, mode='clickOnly') # walk to and interact with Drognan
     if char_type == Diablo2Class.SORCERESS:
-        move_and_click(1239, 344, duration=0.05, delay=pyautogui.PAUSE) # open merchant window (sorceress)
+        move_and_click(1239, 344, duration=0.05, delay=0.7) # open merchant window (sorceress)
     else:
-        move_and_click(1234, 374, duration=0.05, delay=pyautogui.PAUSE) # open merchant window (barbarian)
+        move_and_click(1234, 374, duration=0.05, delay=0.7) # open merchant window (barbarian)
 
 
 def drognan_to_out(first_walk: bool = False) -> None:
     if first_walk is True:
-        move_and_click(2059, 294, duration=0.05, delay=pyautogui.PAUSE, combined=True) # walk from Drognan outside of town
-        move_and_click(1425, 366, duration=0.05, delay=pyautogui.PAUSE) # walk from Drognan outside of town
+        move_and_click(2059, 294, duration=0.05, delay=0.7, mode='clickOnly') # walk from Drognan outside of town
+        move_and_click(1425, 366, duration=0.05, delay=0.7) # walk from Drognan outside of town
     else:
         if char_type == Diablo2Class.SORCERESS:
-            move_and_click(1970, 249, duration=0.05, delay=pyautogui.PAUSE, combined=True) # walk from Drognan outside of town
+            move_and_click(1970, 249, duration=0.05, delay=0.7, mode='clickOnly') # walk from Drognan outside of town
             move_and_click(1400, 373, duration=0.05, delay=0.8) # walk from Drognan outside of town
         else:
-            move_and_click(1931, 241, duration=0.05, delay=pyautogui.PAUSE, combined=True) # walk from Drognan outside of town
-            move_and_click(1480, 354, delay=pyautogui.PAUSE) # walk from Drognan outside of town
+            move_and_click(1931, 241, duration=0.05, delay=0.7, mode='clickOnly') # walk from Drognan outside of town
+            move_and_click(1480, 354, delay=0.7) # walk from Drognan outside of town
 
 
 def out_to_drognan() -> None:
     if char_type == Diablo2Class.SORCERESS:
         move_and_click(456, 954, True, duration=0.05, delay=0.2) # teleport from outside to Drognan
         move_and_click(1195, 489, duration=0.05, delay=0.25) # interact with Drognan
-        move_and_click(1190, 308, duration=0.05, delay=0.2) # open merchant window
+        move_and_click(1190, 308, duration=0.05, delay=0.25) # open merchant window
     else:
-        move_and_click(820, 809, delay=pyautogui.PAUSE) # walk from outside of town inside
-        move_and_click(840, 601, delay=pyautogui.PAUSE) # walk from inside to Drognan
-        move_and_click(1150, 335, duration=0.05, delay=pyautogui.PAUSE) # open merchant window
+        move_and_click(820, 809, delay=0.7) # walk from outside of town inside
+        move_and_click(840, 601, delay=0.7) # walk from inside to Drognan
+        move_and_click(1150, 335, duration=0.05, delay=0.7) # open merchant window
 
 
 def log_text(character_class: str, text: str) -> None:
@@ -245,7 +251,6 @@ def main_shopping_loop() -> None:
     # Initial setup (first run)
     time_start = time.time()
     start_to_drognan()
-    pyautogui.PAUSE = 0.2
     shop_open_weapons_tab()
     search_items()
     time_stop = time.time()
@@ -261,11 +266,9 @@ def main_shopping_loop() -> None:
             break
 
         exit_shop_window()
-        pyautogui.PAUSE = 0.7
         time_start = time.time()
         drognan_to_out(shopping_session_counter == 1) # First movement out uses different coordinates
         out_to_drognan()
-        pyautogui.PAUSE = 0.2
         shop_open_weapons_tab()
         search_items()
         time_stop = time.time()
@@ -273,12 +276,11 @@ def main_shopping_loop() -> None:
 
 
 if __name__ == '__main__':
-    pyautogui.PAUSE = 0.7
     pyautogui.FAILSAFE = True
 
     time.sleep(2)  # Sleep for 2 seconds
 
-    print(pyautogui.position())  # current mouse x and y
+    # print(pyautogui.position())  # current mouse x and y
     # pyautogui.displayMousePosition()
     # exit()
 
