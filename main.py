@@ -36,25 +36,24 @@ char_type = Diablo2Class.SORCERESS
 
 
 def move_and_click(x: int | None, y: int | None, right_click: bool = False, duration: float = MOUSE_MOVE_DELAY, delay: float = 0.2, mode: str = 'moveAndClick') -> None:
-    old, pyautogui.PAUSE = pyautogui.PAUSE, delay
-
     if mode == 'clickOnly':
         pyautogui.click(x, y, button='right' if right_click else 'left', duration=duration)
+        time.sleep(delay)
     elif mode == 'moveOnly':
         pyautogui.moveTo(x, y, duration=duration)
+        time.sleep(delay)
     elif mode == 'moveAndClick':
         pyautogui.moveTo(x, y, duration=duration)
+        time.sleep(delay)
         pyautogui.click(button='right' if right_click else 'left')
+        time.sleep(delay)
     else:
         raise ValueError("Invalid mode. Use 'clickOnly', 'moveOnly', or 'moveAndClick'.")
 
-    pyautogui.PAUSE = old
-
 
 def press_key(key: str, delay: float = 0.2) -> None:
-    old, pyautogui.PAUSE = pyautogui.PAUSE, delay
     pyautogui.press(keys=key)
-    pyautogui.PAUSE = old
+    time.sleep(delay)
 
 
 def generate_random_filename(filename: str) -> str:
@@ -277,6 +276,7 @@ def main_shopping_loop() -> None:
 
 if __name__ == '__main__':
     pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0
 
     time.sleep(2)  # Sleep for 2 seconds
 
